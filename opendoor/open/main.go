@@ -69,7 +69,7 @@ func get_user_agent(w http.ResponseWriter, r *http.Request) string{
 func show_click(w http.ResponseWriter, r *http.Request,page int){
 	q := datastore.NewQuery("Remote")
 	c := appengine.NewContext(r)
-	
+
 	var rs []Remote
 	_,err := q.GetAll(c,&rs)
 	// reserv the page parameter, using click.<page number> for page in furture
@@ -126,5 +126,6 @@ func counter(uri,agent,ip string,c appengine.Context){
 const (
 	HTML_HEAD="<HTML><HEAD><TITLE>Statistic</TITLE></HEAD><BODY>"
 	HTML_TAIL="</BODY></HTML>"
-	GOOGLE_LOGO="<img src=\"https://developers.google.com/appengine/images/appengine-silver-120x30.gif\" alt=\"Powered by Google App Engine\" />"
+	GOOGLE_LOGO=`<img src="https://developers.google.com/appengine/images/appengine-silver-120x30.gif" alt="Powered by Google App Engine" />`
 )
+
