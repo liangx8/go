@@ -43,7 +43,9 @@ func forever(){
 	}
 }
 func uriFilter(uri string) bool{
-	if uri == "/favicon.ico" {return true}
+	if len(uri)<7 {return false}
 	if uri[:7] == "/images" {return true}
+	if len(uri)<12 {return false}
+	if uri[:12] == "/favicon.ico" {return true}
 	return false
 }
