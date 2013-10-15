@@ -59,8 +59,26 @@ func (l *List)Clear(){
 	l.tail.prev=l.head
 	l.size=0
 }
+func (l *List)Iterator() Iterator{
+	li:=new(listIterator)
+	li.le=l.head.next
+	li.eof=l.tail
+	return li
+}
 func NewList() List{
 	l := List{nil,nil,0}
 	initList(&l)
 	return l
+}
+type listIterator struct{
+	le *linkedElement
+	eof *linkedElement
+}
+func (i *listIterator)HasNext() bool{
+	return i.le != i.eof
+}
+func (i *listIterator)Next() interface{}{
+	e := i.le.e
+	i.le=i.le.next
+	return e
 }

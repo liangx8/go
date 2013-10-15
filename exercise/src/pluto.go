@@ -19,6 +19,7 @@ func main(){
 	fmt.Println(c.PopFront(),c)
 	fmt.Println(c.PopBack(),c)
 	fmt.Println("=============================")
+	print_all(c);
 
 	l := array.NewList()
 	c = &l
@@ -26,9 +27,18 @@ func main(){
 	c.PushFront(math.Pi)
 	c.PushFront("ListFront")
 	fmt.Printf("%d,%v\n",c.Size(),c)
+	print_all(c);
 	c.Clear()
 	fmt.Printf("%d,%v\n",c.Size(),c)
 
 	t := []int{1,2,3,4,5,6,7}
 	fmt.Println(t[:len(t)-1])
+}
+
+func print_all(c array.Collection){
+	var it array.Iterator
+	it = c.Iterator()
+	for it.HasNext(){
+		fmt.Printf("print:%v\n",it.Next())
+	}
 }

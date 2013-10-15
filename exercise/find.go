@@ -7,7 +7,7 @@ import (
 	"bufio"
 )
 const (
-	search_path = "/home/arm/git/cpp"
+	search_path = "/home/arm/git/go/goweb"
 )
 var filter func(p string) bool
 var search func(content string)bool
@@ -20,7 +20,7 @@ func main(){
 	}
 }
 func content(line string) bool{
-	re,err := regexp.Compile("include")
+	re,err := regexp.Compile("log")
 	if err != nil { return false}
 	v:=re.FindString(line)
 	return v != ""
@@ -93,7 +93,8 @@ func proc_file(p string) error{
 	return nil
 }
 func c_filter(p string) bool {
-	re,err := regexp.Compile(`.c$|.cpp$|.h$`)
+	//re,err := regexp.Compile(`.c$|.cpp$|.h$`)
+	re,err := regexp.Compile(`.go$`)
 	if (err == nil){
 		v := re.FindString(p)
 		if (v == "") {

@@ -54,5 +54,24 @@ func (v *Vector)Size() int{return len(v.e)}
 func (v *Vector)Clear(){
 	v.e=make([]interface{},0,cap(v.e))
 }
+func (v *Vector)Iterator() Iterator{
+	i := new(vectorIterator)
+	i.current=0
+	i.size=v.Size()
+	i.e=v.e
+	return i
+}
 
+type vectorIterator struct{
+	current,size int
+	e []interface{}
 
+}
+func (i *vectorIterator)HasNext() bool{
+	return i.current<i.size
+}
+func (i *vectorIterator)Next() interface{}{
+	n := i.current
+	i.current++
+	return i.e[n]
+}

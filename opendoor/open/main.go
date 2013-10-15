@@ -8,8 +8,10 @@ import(
 	"regexp"
 	"strconv"
 
-    "appengine"
-    "appengine/datastore"
+	"appengine"
+	"appengine/datastore"
+
+	"rcapps"
 )
 
 type Remote struct{
@@ -44,6 +46,7 @@ func handler(w http.ResponseWriter, r *http.Request){
 		counter(uri,get_user_agent(w,r),remoteAddr,c)
 		http.Redirect(w,r,"/s/index.html",http.StatusMovedPermanently)
 		//fmt.Fprintf(w,uri)
+// match "click" page
 	case re.MatchString(uri):
 		var page int
 		result := re.FindStringSubmatch(uri)
@@ -54,7 +57,8 @@ func handler(w http.ResponseWriter, r *http.Request){
 		show_click(w,r,page)
 	default:
 		counter(uri,get_user_agent(w,r),remoteAddr,c)
-		http.Redirect(w,r,"/s"+uri,http.StatusMovedPermanently)
+//		http.Redirect(w,r,"/s"+uri,http.StatusMovedPermanently)
+		rcapps.Gate(w,r,uri)
 	}
 }
 func get_user_agent(w http.ResponseWriter, r *http.Request) string{
