@@ -90,6 +90,23 @@ func adminHandler(w http.ResponseWriter, r *http.Request){
 			fmt.Fprint(w,"Failure!");
 		}
 		fmt.Fprintf(w,HTML_TAIL)
+	case uri == "zipupload":
+		w.Header().Add("Content-type","text/html;charset=UTF-8")
+		fmt.Fprintf(w,HTML_HEAD,"upload tar archive")
+		fmt.Fprint(w,"<h2>Upload batch files in zip archive</h2><hr />")
+		fmt.Fprintf(w,HTML_UPLOADFORM,"zipupload.do",FILE_FIELD)
+		fmt.Fprintf(w,HTML_TAIL)
+	case uri == "zipupload.do":
+		err := zipupload(w,r,FILE_FIELD)
+		w.Header().Add("Content-type","text/html;charset=UTF-8")
+		fmt.Fprintf(w,HTML_HEAD,"zip file upload result")
+		if err == nil{
+			fmt.Fprint(w,"Successful!");
+		} else {
+			fmt.Fprint(w,"Failure!");
+			fmt.Fprint(w,err)
+		}
+		fmt.Fprintf(w,HTML_TAIL)
 	case uri == "upload.do":
 		upload(w,r,FILE_FIELD)
 	case uri == "vupload.do":

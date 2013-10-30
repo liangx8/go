@@ -13,6 +13,9 @@ import (
 
 	"store"
 	"zpack"
+
+
+	"archive/zip"
 )
 func byFileName(w http.ResponseWriter,r *http.Request) {
 	uri := r.URL.RequestURI()[1:]
@@ -107,44 +110,69 @@ func (cb *fCallback)Each(k *datastore.Key, e interface{}, num int) error {
 func (cb *fCallback)Tail(count int){
 	fmt.Fprint(cb.w,"</TABLE>")
 }
+type _callback struct {
+	c appengine.Context
+	rutil store.ResourceUtil
+	vutil *store.VpathUtil
+}
+// implements zpack.ZCallback interface
+func (cb *_callback)Run(zr io.Reader,fi os.FileInfo){
+	if !fi.IsDir(){
+		fn := fi.Name()
+		re,err := regexp.Compile(`\..*$`)
+		if err != nil {
+			cb.c.Errorf("regexp:%v",err)
+		}
+		n := re.FindStringIndex(fn)
+		ext := fn[n[0]:]
+		mediaType := mime.TypeByExtension(ext)
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
+		res,err :=cb.rutil.SaveUnique(zr,mediaType)
+		if err != nil {
+			cb.c.Errorf("%v",err)
+			return
+		}
+		vp,err := cb.vutil.SaveOrUpdate(res.Key,fn)
+		if err != nil {
+			cb.c.Errorf("%v",err)
+		}
+		if vp == nil { return }
+	}
+}
 func tarupload(w http.ResponseWriter, r *http.Request, name string) error{
 	f,_,err := r.FormFile(name)
 	c := appengine.NewContext(r)
-	rutil := store.NewResourceUtil(c)
-	vutil := store.NewVpathUtil(c)
 
 	if err != nil {
 		c.Errorf("formfile:%v",err)
 		return err
 	}
-	re,err := regexp.Compile(`\..*$`)
-	if err != nil {
-		c.Errorf("regexp:%v",err)
-		return err
-	}
-	err = zpack.TarForEach(f,func(zr io.Reader,fi os.FileInfo){
-		if !fi.IsDir(){
-			fn := fi.Name()
-			n := re.FindStringIndex(fn)
-			ext := fn[n[0]:]
-			mediaType := mime.TypeByExtension(ext)
-			if mediaType == "" {
-				mediaType = "application/octet-stream"
-			}
-			res,err :=rutil.SaveUnique(zr,mediaType)
-			if err != nil {
-				c.Errorf("%v",err)
-				return
-			}
-			vp,err := vutil.SaveOrUpdate(res.Key,fn)
-			if err != nil {
-				c.Errorf("%v",err)
-			}
-			if vp == nil { return }
-		}
-	})
+
+	err = zpack.TarForEach(f,&_callback{c,store.NewResourceUtil(c),store.NewVpathUtil(c)})
 	if err != nil {
 		c.Errorf("%v",err)
+		return err
+	}
+	return nil
+}
+func zipupload(w http.ResponseWriter, r *http.Request, name string) error {
+	c := appengine.NewContext(r)
+	f,_,err := r.FormFile(name)
+	if err != nil {
+		return err
+	}
+	size,err := f.Seek(0,2)
+	if err != nil {
+		return err
+	}
+	mr,err := zip.NewReader(f,size)
+	if err != nil {
+		return err
+	}
+	err = zpack.ZipForEach(mr,&_callback{c,store.NewResourceUtil(c),store.NewVpathUtil(c)})
+	if err != nil {
 		return err
 	}
 	return nil

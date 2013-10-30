@@ -32,7 +32,8 @@ type cCallback struct {
 }
 func (cb *cCallback)Head(total int){
 	if total>0 {
-	fmt.Fprintf(cb.w,"Total %d record(s)/ %d pages",total,total/pageSize+1);
+	lp := total/pageSize
+	fmt.Fprintf(cb.w,`Total %d record(s)/ %d pages, <a href="click.%d">last page</a>`,total,lp+1,lp);
 	fmt.Fprintf(cb.w,`<table bgcolor="black"><tr bgcolor="grey"><td>x</td><td>IP</td><td>when</td><td>request</td><td>Agent</td></tr>`)
 	} else {
 		fmt.Fprintf(cb.w,"0 record");

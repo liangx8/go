@@ -5,7 +5,9 @@ import (
 	"archive/tar"
 	"compress/gzip"
 )
-type zCallback func(io.Reader,os.FileInfo)
+type zCallback interface {
+	Run(io.Reader,os.FileInfo)
+}
 
 func TarForEach(r io.Reader,zc zCallback) error {
 	zr,err := gzip.NewReader(r)
@@ -21,7 +23,7 @@ func TarForEach(r io.Reader,zc zCallback) error {
 		if err != nil {
 			return err
 		}
-		zc(tr,hdr.FileInfo())
+		zc.Run(tr,hdr.FileInfo())
 	}
 	return nil
 }
