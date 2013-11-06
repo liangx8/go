@@ -77,7 +77,7 @@ func PrimitiveCompare(l,r interface{}) (int,error) {
 func str_comp(l,r string) int{
 	if l==r {return 0}
 	ll:=len(l)
-	
+
 	for n:=0;n<ll;n++ {
 		if n < len(r) {
 			m := int(l[n]) - int(r[n])

@@ -22,6 +22,7 @@ type Bag interface{
 	Iteration
 	Add(e interface{}) error
 	Remove(e interface{})
+	Find(e interface{})error
 }
 // random access
 type Vector interface{
