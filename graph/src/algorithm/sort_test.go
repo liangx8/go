@@ -1,33 +1,38 @@
 package algorithm
 
 import (
-    "testing"
+	"testing"
+	"sort"
+
+	"utils"
 )
 
-func TestPrimitiveCompare(t *testing.T) {
-	// string
-	src,dst := "1","2"
-	res,err :=PrimitiveCompare(src,dst)
-	if err != nil {
-		t.Error(err)
+type sortable []interface{}
+
+
+func (s sortable)Len() int {
+	return len(s)
+}
+func (s sortable)Less(i,j int) bool {
+	res,_ := utils.PrimitiveCompare(s[i],s[j])
+	return res < 0
+}
+func (s *sortable)Swap(i,j int) {
+	(*s)[i],(*s)[j]=(*s)[j],(*s)[i]
+}
+
+func TestQsort(t *testing.T) {
+	ia := sortable{1,3,44,1,33,23,432,3,443,2,365,84,33,5,334,123,21,23}
+	SimpleQsort(ia)
+	if !sort.IsSorted(&ia) {
+		t.Errorf("sort2 fail")
 	}
-	if res>0 {
-		t.Errorf("input (%s,%s) expect result less than 0, result is %d",src,dst,res)
-	}
-	src,dst = "20","2"
-	res,_ =PrimitiveCompare(src,dst)
-	if res<0 {
-		t.Errorf("input (%s,%s) expect result greater than 0, result is %d",src,dst,res)
-	}
-	src,dst = "2","20"
-	res,_ =PrimitiveCompare(src,dst)
-	if res>0 {
-		t.Errorf("input (%s,%s) expect result less than 0, result is %d",src,dst,res)
-	}
-	src,dst = "0","20"
-	res,_ =PrimitiveCompare(src,dst)
-	if res>0 {
-		t.Errorf("input (%s,%s) expect result less than 0, result is %d",src,dst,res)
+}
+func TestQuickSort(t *testing.T) {
+	ia := sortable{1,3,44,1,33,23,432,3,443,2,365,84,33,5,334,123,21,23}
+	SimpleQuickSort(ia)
+	if !sort.IsSorted(&ia) {
+		t.Errorf("sort1 fail")
 	}
 }
 

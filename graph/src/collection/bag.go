@@ -7,7 +7,7 @@
 package collection
 
 import (
-	"algorithm"
+	"utils"
 	"fmt"
 )
 var NO_FOUND = fmt.Errorf("No found")
@@ -18,7 +18,7 @@ type node struct{
 }
 type bag struct{
 	top *node
-	cp algorithm.Compare
+	cp utils.Compare
 }
 type iterForBtree struct {
 	ch chan interface{}
@@ -76,10 +76,10 @@ func (b *bag)Remove(e interface{}){
 }
 func (b *bag)IsEmpty()bool{return b.top == nil}
 
-func NewBag(cp algorithm.Compare) Bag{return &bag{top:nil,cp:cp}}
-func NewSimpleBag() Bag{return &bag{top:nil,cp:algorithm.PrimitiveCompare}}
+func NewBag(cp utils.Compare) Bag{return &bag{top:nil,cp:cp}}
+func NewSimpleBag() Bag{return &bag{top:nil,cp:utils.PrimitiveCompare}}
 
-func add(cur *node,e interface{},cp algorithm.Compare) error{
+func add(cur *node,e interface{},cp utils.Compare) error{
 	res,err := cp(e,cur.e)
 	if err != nil {return err}
 	if res>0 {
@@ -110,7 +110,7 @@ func travel(top *node, ch chan interface{}) {
 /*
 * 增加父节点跟踪。提供目标节点的父节点
 */
-func find_btree(parent,top *node,e interface{},cp algorithm.Compare)(*node,*node,error){
+func find_btree(parent,top *node,e interface{},cp utils.Compare)(*node,*node,error){
 	res,err := cp(e,top.e)
 	if err != nil {
 		return nil,nil,err

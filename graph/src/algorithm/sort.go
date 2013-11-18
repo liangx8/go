@@ -1,92 +1,118 @@
 package algorithm
 
 import (
-	"fmt"
+	"collection"
+	"utils"
+//	"fmt"
 )
-const (
-	errStr ="Both elements must be type %T(%v @ %T,%v @ %T)"
-)
-type Compare func(l,r interface{}) (int,error)
-
-func PrimitiveCompare(l,r interface{}) (int,error) {
-
-	switch l_value := l.(type){
-		case string:
-			r_value,ok := r.(string)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return str_comp(l_value,r_value),nil
-		case int:
-			r_value,ok := r.(int)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return l_value - r_value,nil
-		case int8:
-			r_value,ok := r.(int8)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return int(l_value - r_value),nil
-		case int16:
-			r_value,ok := r.(int16)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return int(l_value - r_value),nil
-		case int32:
-			r_value,ok := r.(int32)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return int(l_value - r_value),nil
-		case int64:
-			r_value,ok := r.(int64)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			return int(l_value - r_value),nil
-		case float32:
-			r_value,ok := r.(float32)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			var res int
-			if l_value > r_value {
-				res = 1
-			} else {
-				res = -1
-			}
-			return res,nil
-		case float64:
-			r_value,ok := r.(float64)
-			if !ok {
-				return 0,fmt.Errorf(errStr,l,l,l,r,r)
-			}
-			var res int
-			if l_value > r_value {
-				res = 1
-			} else {
-				res = -1
-			}
-			return res,nil
-	}
-	return 0,fmt.Errorf("Unkonwn type (%v @ %T)",l,l)
+type atom_data struct{
+	start,end int
 }
-func str_comp(l,r string) int{
-	if l==r {return 0}
-	ll:=len(l)
+func SimpleQuickSort(es []interface{}) error{
+	return QuickSort(es,utils.PrimitiveCompare)
+}
+func QuickSort(es []interface{},c utils.Compare) error{
+//	ss := collection.NewStack()
+	start,end := 0,len(es)
+	return _quickSort(es,start,end,c)
+}
+func _quickSort(es []interface{},start,end int,c utils.Compare) error {
+	var st,en int
+	var dir_left bool
+	var res int
+	var err error
 
-	for n:=0;n<ll;n++ {
-		if n < len(r) {
-			m := int(l[n]) - int(r[n])
-			if m == 0 {continue}
-			return m
+
+	if end - start < 2 {return nil}
+	st,en =start,end-1
+	dir_left =true
+	for st<en{
+		res,err =c(es[st],es[en])
+		if err !=nil {return err}
+		if dir_left {
+			if res>0 {
+				es[st],es[en]=es[en],es[st]
+				st ++
+				dir_left=false
+			} else {
+				en --
+			}
 		} else {
-			return int(l[n])
+			if res>0 {
+				es[st],es[en]=es[en],es[st]
+				en--
+				dir_left=true
+			} else {
+				st ++
+			}
 		}
 	}
-	if ll == len(r) {return 0}
-	return -int(r[ll])
+	err = _quickSort(es,start,st,c)
+	if err != nil { return err }
+	err = _quickSort(es,st+1,end,c)
+	if err != nil { return err }
+	return nil
+}
+func SimpleQsort(es []interface{}) error {
+	return Qsort(es,utils.PrimitiveCompare)
+}
+/*
+不用递归函数的递归写法
+*/
+func Qsort(es []interface{},c utils.Compare) error{
+	start,end := 0, len(es)
+	var st,en int
+	var dir_left bool
+	var res int
+	var err error
+	var sp *stack_pool
+	ss := collection.NewStack()
+start_:
+	if end - start < 2 {
+		goto middle_
+	}
+	st,en =start,end-1
+	dir_left =true
+	for st<en{
+		res,err =c(es[st],es[en])
+		if err !=nil {return err}
+		if dir_left {
+			if res>0 {
+				es[st],es[en]=es[en],es[st]
+				st ++
+				dir_left=false
+			} else {
+				en --
+			}
+		} else {
+			if res>0 {
+				es[st],es[en]=es[en],es[st]
+				en--
+				dir_left=true
+			} else {
+				st ++
+			}
+		}
+	}
+	sp = &stack_pool{start,st,end,en,true}
+	ss.Push(sp)
+	end=st
+	goto start_
+middle_:
+	if ss.IsEmpty() {return nil}
+	sp,_ = ss.Pop().(*stack_pool)
+	start,st,end,en=sp.start,sp.st,sp.end,sp.en
+	if !sp.left {goto middle_right}
+//middle_left:
+	sp.left=false
+	ss.Push(sp)
+	start=st+1
+
+	goto start_
+middle_right:
+	goto middle_
+}
+type stack_pool struct {
+	start,st,end,en int
+	left bool
 }

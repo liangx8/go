@@ -11,7 +11,7 @@ type Iterator interface{
 type Iteration interface{
 	Iterator() Iterator
 }
-type Queue interface{
+type Stack interface{
 	Iteration
 	Push(e interface{})
 	Pop() interface{}

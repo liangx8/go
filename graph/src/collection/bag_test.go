@@ -3,13 +3,13 @@ package collection
 import (
 	"testing"
 	"fmt"
-	"algorithm"
+	"utils"
 )
 func Test_btree(t *testing.T){
 	num :=[]int{8,15,7,10,18,16,9}
 	top := &node{num[0],nil,nil}
 	for i:=1;i<len(num);i++{
-		add(top,num[i],algorithm.PrimitiveCompare)
+		add(top,num[i],utils.PrimitiveCompare)
 	}
 	if top.l == nil || top.r == nil || top.r.l == nil || top.r.r == nil || top.r.l.l == nil || top.r.r.l == nil {
 		t.Errorf("nodes are not in order")
@@ -23,11 +23,11 @@ func Test_btree(t *testing.T){
 	if top.l != <-ch || top != <-ch || top.r.l.l != <-ch || top.r.l != <-ch || top.r != <-ch || top.r.r.l != <-ch || top.r.r != <-ch{
 		t.Errorf("travel error")
 	}
-	p,c,_ := find_btree(nil,top,15,algorithm.PrimitiveCompare)
+	p,c,_ := find_btree(nil,top,15,utils.PrimitiveCompare)
 	if p != top || c != top.r {
 		t.Errorf("level1 find error")
 	}
-	p,c,_ = find_btree(nil,top,9,algorithm.PrimitiveCompare)
+	p,c,_ = find_btree(nil,top,9,utils.PrimitiveCompare)
 	if p != top.r.l || c != top.r.l.l {
 		t.Errorf("level2 find error")
 	}

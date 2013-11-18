@@ -5,21 +5,24 @@ import (
 	"math/rand"
 	"fmt"
 
-	"collection"
+
+	"algorithm"
 )
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	b := collection.NewSimpleBag()
-	for i:=0;i<20;i++ {
+	ia := make([]interface{},amount)
+	for i:=0;i<amount;i++ {
 		var num int32
-		for {
-			num = rand.Int31()%20
-			if b.Find(num) == collection.NO_FOUND {break}
-		}
-		b.Add(num)
+		num = rand.Int31()%99
+		ia[i]=num
 	}
-	fmt.Println(collection.CountDepth(b))
+	fmt.Println(ia)
+	err := algorithm.SimpleQsort(ia)
+	if err!=nil {
+		fmt.Println(err)
+		return
+	}
 /*
 	var 计数器 int
 	collection.ForEach(b,func(e interface{}){
@@ -34,4 +37,6 @@ func main() {
 	})
 */
 }
-
+const (
+	amount = 10
+)
