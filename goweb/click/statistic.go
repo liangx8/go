@@ -2,23 +2,42 @@ package click
 
 import (
 	"net/http"
-	"fmt"
 	"appengine/datastore"
 	"appengine"
 	"time"
 
-	"dao"
 )
 const pageSize int = 20
-func ListCounter(w http.ResponseWriter, r *http.Request,page int){
-	c:=appengine.NewContext(r)
-	util:=dao.NewUtil(c)
+func ListCounter(w http.ResponseWriter, c appengine.Context,page int) map[string]interface{}{
 	q := datastore.NewQuery("Click").Order("When")
-	clk = &Click{}
-	err := util.Execute(q,&cCallback{w},page * 20,20)
-	if  err != nil {
+	total,err:=q.Count(c)
+	if err != nil {
 		c.Errorf("%v",err)
+		return nil
 	}
+	it := q.Offset(page * pageSize).Limit(pageSize).Run(c)
+	ch := make(chan *Click)
+	go func(){
+		for {
+			cl := &Click{}
+			_,err := it.Next(cl)
+			if err == datastore.Done { break }
+			if err != nil {
+				c.Errorf("%v",err)
+				break
+			}
+			ch <- cl
+		}
+		close(ch)
+	}()
+	model := map[string]interface{} { "view":"click.tmpl","data":ch,"total":total,}
+	model["start"]=page * pageSize
+	model["int64time"]=int64Time
+	model["odd"]=func(n int) bool{return n%2 == 0}
+	model["add"]=func(n,m int) int{ return n+m }
+	model["lastpage"]=total/pageSize
+
+	return model
 }
 func int64Time(i int64) time.Time {
 	sec := i/1000000000
@@ -26,25 +45,3 @@ func int64Time(i int64) time.Time {
 	return time.Unix(sec,nano)
 }
 
-var clk *Click
-type cCallback struct {
-	w http.ResponseWriter
-}
-func (cb *cCallback)Head(total int){
-	if total>0 {
-	lp := total/pageSize
-	fmt.Fprintf(cb.w,`Total %d record(s)/ %d pages, <a href="click.%d">last page</a>`,total,lp+1,lp);
-	fmt.Fprintf(cb.w,`<table bgcolor="black"><tr bgcolor="grey"><td>x</td><td>IP</td><td>when</td><td>request</td><td>Agent</td></tr>`)
-	} else {
-		fmt.Fprintf(cb.w,"0 record");
-	}
-}
-func (cb *cCallback)Each(k *datastore.Key, num int) {
-	fmt.Fprintf(cb.w,`<tr bgcolor="white"><td>%d</td><td>%s</td><td>%v</td><td>%s</td><td>%s</td></tr>`,num,clk.Ip,int64Time(clk.When),clk.Request,clk.Agent)
-}
-func (cb *cCallback)Tail(count int){
-	fmt.Fprint(cb.w,"</table>")
-}
-func (cb *cCallback)Holder() interface{} {
-	return clk
-}

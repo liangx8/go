@@ -1,118 +1,27 @@
 package web
 import (
-	"net/http"
+	//"net/http"
 	"appengine"
-	"appengine/datastore"
-	"appengine/blobstore"
+//	"appengine/blobstore"
 	"fmt"
 	"io"
 	"os"
-	"errors"
+//	"errors"
 	"regexp"
 	"mime"
+	"mime/multipart"
+	"archive/zip"
 
 	"store"
 	"zpack"
 
 
-	"archive/zip"
 )
-func byFileName(w http.ResponseWriter,r *http.Request) {
-	uri := r.URL.RequestURI()[1:]
-	if uri == "" {uri = "index.html"}
-	c := appengine.NewContext(r)
-	util := store.NewVpathUtil(c)
-	var vp store.Vpath
-	key,err := util.FindOne(uri,&vp)
-	if(err !=  nil){
-		c.Errorf("%v",err)
-		return
-	}
-	if key == nil {
-		c.Infof("file(%s) is not found!",uri)
-		http.NotFound(w,r)
-	}
-	blobstore.Send(w,vp.Key)
-	return
-}
-func upload(w http.ResponseWriter, r *http.Request,name string) error{
-	c := appengine.NewContext(r)
-	f,fh,err:=r.FormFile(name)
-	if err != nil {
-		return err
-	}
-	mimeType := fh.Header.Get("Content-type")
-	util := store.NewResourceUtil(c)
-	util.SaveUnique(f,mimeType)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func vupload(w http.ResponseWriter, r *http.Request,name,pa string) error {
-	c := appengine.NewContext(r)
-	f,fh,err := r.FormFile(name)
-	if err != nil {
-		return nil
-	}
-	mimeType := fh.Header.Get("Content-type")
-	util := store.NewResourceUtil(c)
-	res,err := util.SaveUnique(f,mimeType)
-	if err != nil {
-		return err
-	}
-	filepath := r.FormValue(pa)
-	if filepath == "" {
-		return errors.New("file name must be provided")
-	}
-	util1 := store.NewVpathUtil(c)
-	util1.SaveOrUpdate(res.Key,filepath)
-	return nil
-}
-func list(w http.ResponseWriter, r *http.Request, page int) error{
-	c := appengine.NewContext(r)
-	util := store.NewResourceUtil(c)
-	return util.All(&rCallback{w})
-}
 
-type rCallback struct{w io.Writer}
-func (cb *rCallback)Head(isEmpty bool){
-	if isEmpty {return}
-	fmt.Fprint(cb.w,`<TABLE bgcolor="black"><TR bgcolor="gray"><TD>Seq</TD><TD>MD5</TD><TD>OPEN</TD></TR>`)
-}
-func (cb *rCallback)Each(k *datastore.Key, e interface{},num int) error{
-	fmt.Fprintf(cb.w,`<TR BGCOLOR="white"><TD>%d</TD><TD>%s</TD><TD><a href="bykey?bk=%s">OPEN</a></TD></TR>`,num,e.(*store.Resource).Md5str,e.(*store.Resource).Key)
-	return nil
-}
-func (cb *rCallback)Tail(count int){
-	if count == 0 {return}
-	fmt.Fprint(cb.w,`</TABLE>`)
-}
-func vlist(w http.ResponseWriter, r *http.Request, page int) error{
-	c := appengine.NewContext(r)
-	util := store.NewVpathUtil(c)
-	return util.All(&fCallback{w})
-}
-type fCallback struct{
-	w io.Writer
-}
-func (cb *fCallback)Head(isEmpty bool){
-	if isEmpty {
-		fmt.Fprint(cb.w, "zero record")
-		return
-	}
-	fmt.Fprint(cb.w,`<TABLE bgcolor="black"><TR bgcolor="gray"><TD>Seq</TD><TD>path</TD><TD>OPEN</TD></TR>`)
-}
-func (cb *fCallback)Each(k *datastore.Key, e interface{}, num int) error {
-	fmt.Fprintf(cb.w,`<TR BGCOLOR="white"><TD>%d</TD><TD>%s</TD><TD><a href="/%s">OPEN</a></TD></TR>`,num,e.(*store.Vpath).Name,e.(*store.Vpath).Name)
-	return nil
-}
-func (cb *fCallback)Tail(count int){
-	fmt.Fprint(cb.w,"</TABLE>")
-}
+
 type _callback struct {
 	c appengine.Context
-	rutil store.ResourceUtil
+	rutil *store.ResourceUtil
 	vutil *store.VpathUtil
 }
 // implements zpack.ZCallback interface
@@ -141,28 +50,17 @@ func (cb *_callback)Run(zr io.Reader,fi os.FileInfo){
 		if vp == nil { return }
 	}
 }
-func tarupload(w http.ResponseWriter, r *http.Request, name string) error{
-	f,_,err := r.FormFile(name)
-	c := appengine.NewContext(r)
+func tarupload(c appengine.Context,f multipart.File) error {
 
-	if err != nil {
-		c.Errorf("formfile:%v",err)
-		return err
-	}
-
-	err = zpack.TarForEach(f,&_callback{c,store.NewResourceUtil(c),store.NewVpathUtil(c)})
+	err := zpack.TarForEach(f,&_callback{c,store.NewResourceUtil(c),store.NewVpathUtil(c)})
 	if err != nil {
 		c.Errorf("%v",err)
 		return err
 	}
 	return nil
 }
-func zipupload(w http.ResponseWriter, r *http.Request, name string) error {
-	c := appengine.NewContext(r)
-	f,_,err := r.FormFile(name)
-	if err != nil {
-		return err
-	}
+func zipupload(c appengine.Context,f multipart.File) error {
+	// reach end of file's size
 	size,err := f.Seek(0,2)
 	if err != nil {
 		return err
@@ -175,5 +73,18 @@ func zipupload(w http.ResponseWriter, r *http.Request, name string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+func upload(c appengine.Context,f multipart.File, fh *multipart.FileHeader, fp string) error {
+	util :=store.NewResourceUtil(c)
+	res,err := util.SaveUnique(f,fh.Header.Get("Content-type"))
+	if err != nil {
+		return err
+	}
+	if fp == "" {
+		return fmt.Errorf("file name must be provided")
+	}
+	u1 := store.NewVpathUtil(c)
+	u1.SaveOrUpdate(res.Key,fp)
 	return nil
 }

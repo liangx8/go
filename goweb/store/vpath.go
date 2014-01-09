@@ -3,10 +3,12 @@ package store
 import (
 	"appengine"
 	"appengine/datastore"
+	"time"
 )
 type Vpath struct {
 	Name string
 	Key appengine.BlobKey
+	Update time.Time
 }
 
 type VpathUtil struct {
@@ -24,6 +26,7 @@ func (vpu *VpathUtil)SaveOrUpdate(bk appengine.BlobKey,fn string) (*Vpath,error)
 	}
 	vp.Name=fn
 	vp.Key=bk
+	vp.Update=time.Now()
 	if key == nil {
 		_,err=datastore.Put(vpu.c,datastore.NewIncompleteKey(vpu.c,"Vpath",nil),&vp)
 	} else {
@@ -43,28 +46,18 @@ func (vpu *VpathUtil)FindOne(fn string,vp *Vpath) (*datastore.Key,error){
 	}
 	return key,nil
 }
-func (vpu *VpathUtil)All(cb ResultCallback) error {
+func (vpu *VpathUtil)All(cb func(*Vpath)) {
 	var vp Vpath
-	count := 0
 	q := datastore.NewQuery("Vpath")
 	itr := q.Run(vpu.c)
-	key,err := itr.Next(&vp)
-	if err == datastore.Done {
-		cb.Head(true)
-	} else if err != nil {
-		return err
-	} else {
-		cb.Head(false)
-		for {
-			cb.Each(key,&vp,count)
-			count ++
-			key,err = itr.Next(&vp)
-			if err == datastore.Done{break}
-			if err != nil {
-				return err
-			}
+	for {
+		_,err := itr.Next(&vp)
+		if err == datastore.Done {
+			break
+		} else if err != nil {
+			vpu.c.Errorf("%v",err)
+			break
 		}
+		cb(&vp)
 	}
-	cb.Tail(count)
-	return nil
 }

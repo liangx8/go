@@ -4,6 +4,8 @@ import (
 	"time"
 	"appengine"
 	"appengine/datastore"
+
+	"session"
 )
 type Click struct{
 	Ip string
@@ -17,12 +19,16 @@ type send struct {
 	c appengine.Context
 }
 var ch chan *send
-func Counter(r *http.Request){
+func Counter(r *http.Request,s session.Session){
+	if s.Map()["touch"] != nil {
+		return
+	}
+	c:=appengine.NewContext(r)
+	s.Map()["touch"]=true
+
 	uri := r.URL.RequestURI()
-	if uriFilter(uri){return}
-	clk := Click{r.RemoteAddr,"",time.Now().UnixNano(),uri,r.Header.Get("User-Agent")}
-	ch <- &send{&clk,appengine.NewContext(r)}
-	return
+	clk := Click{r.RemoteAddr,"",time.Now().UnixNano(),uri,r.UserAgent()}
+	ch <- &send{&clk,c}
 }
 func init(){
 	ch = make(chan *send)
@@ -31,8 +37,7 @@ func init(){
 func forever(){
 	var last int64
 	last = 0
-	for {
-		sendc := <- ch
+	for sendc := range ch{
 		if(sendc.clk.When - last)> 2000000000 {
 			last = sendc.clk.When
 			_,err:=datastore.Put(sendc.c,datastore.NewIncompleteKey(sendc.c,"Click",nil),sendc.clk)
@@ -41,11 +46,4 @@ func forever(){
 			}
 		}
 	}
-}
-func uriFilter(uri string) bool{
-	if len(uri)<7 {return false}
-	if uri[:7] == "/images" {return true}
-	if len(uri)<12 {return false}
-	if uri[:12] == "/favicon.ico" {return true}
-	return false
 }

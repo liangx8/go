@@ -8,53 +8,42 @@ import (
 	"io"
 	"crypto/md5"
 	"fmt"
+	"time"
+
 )
 
-type ResultCallback interface{
-	Head(isEmpty bool)
-	Each(k *datastore.Key,e interface{},num int) error
-	Tail(count int)
-}
+
 type Resource struct{
 	Md5str string
 	Key appengine.BlobKey
+	Update time.Time
 }
 
-type ResourceUtil interface{
-	SaveUnique(r io.Reader,mimeType string) (*Resource,error)
-	All(cb ResultCallback) error
-}
-type resu struct{
+
+type ResourceUtil struct{
 	c appengine.Context
 }
 
-func NewResourceUtil(c appengine.Context) ResourceUtil{
-	return &resu{c}
+func NewResourceUtil(c appengine.Context) *ResourceUtil{
+	return &ResourceUtil{c}
 }
-func (rs *resu)All(callback ResultCallback) error {
+func (rs *ResourceUtil)All(cb func(*Resource)) {
 	var res Resource
-	count := 0
 	q := datastore.NewQuery("Resource")
 	itr := q.Run(rs.c)
-	key,err:=itr.Next(&res)
-
-	if err == datastore.Done {
-		callback.Head(true)
-	} else if err !=nil {
-		return err
-	} else {
-		callback.Head(false)
-		for {
-			callback.Each(key,&res,count)
-			count ++
-			key,err = itr.Next(&res)
-			if err == datastore.Done {break}
+	for {
+		_,err:=itr.Next(&res)
+		if err == datastore.Done {
+			break
+		} else if err !=nil {
+			rs.c.Errorf("%v",err)
+			break
 		}
+		cb(&res)
 	}
-	callback.Tail(count)
-	return nil
+
 }
-func (rs *resu)SaveUnique(r io.Reader,mimeType string) (*Resource,error){
+func (rs *ResourceUtil)SaveUnique(r io.Reader,mimeType string) (*Resource,error){
 	blobw,err := blobstore.Create(rs.c,mimeType)
 	if err !=  nil {
 		return nil,err
@@ -70,7 +59,7 @@ func (rs *resu)SaveUnique(r io.Reader,mimeType string) (*Resource,error){
 		if err != nil {
 			return nil,err
 		}
-		res = &Resource{md5str,bkey}
+		res = &Resource{md5str,bkey,time.Now()}
 		_,err = datastore.Put(rs.c,datastore.NewIncompleteKey(rs.c,"Resource",nil),res)
 		if err != nil {
 			return nil,err
@@ -78,7 +67,7 @@ func (rs *resu)SaveUnique(r io.Reader,mimeType string) (*Resource,error){
 	}
 	return res,nil
 }
-func (rs *resu)byMd5str(md5str string) (*Resource,error){
+func (rs *ResourceUtil)byMd5str(md5str string) (*Resource,error){
 	q := datastore.NewQuery("Resource").Filter("Md5str =",md5str)
 	var res []Resource
 	_,err := q.GetAll(rs.c,&res)
