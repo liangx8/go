@@ -54,7 +54,7 @@ func bloblist(w http.ResponseWriter, r *http.Request){
 }
 func listsession(w http.ResponseWriter, r *http.Request){
 	c:=appengine.NewContext(r)
-	m:=map[string]interface{}{"view":"session.tmpl","data":session.List()}
+	m:=map[string]interface{}{"view":"session.tmpl","data":session.ListSession(c)}
 	err := render(w,m)
 	if err != nil {
 		c.Errorf("%v",err)

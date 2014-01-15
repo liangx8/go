@@ -14,36 +14,13 @@ type Click struct{
 	Request string
 	Agent string
 }
-type send struct {
-	clk *Click
-	c appengine.Context
-}
-var ch chan *send
-func Counter(r *http.Request,s session.Session){
-	if s.Map()["touch"] != nil {
-		return
-	}
+func Counter(r *http.Request,s *session.Session){
 	c:=appengine.NewContext(r)
-	s.Map()["touch"]=true
-
+	if s.IsUsed(c) { return }
 	uri := r.URL.RequestURI()
 	clk := Click{r.RemoteAddr,"",time.Now().UnixNano(),uri,r.UserAgent()}
-	ch <- &send{&clk,c}
-}
-func init(){
-	ch = make(chan *send)
-	go forever()
-}
-func forever(){
-	var last int64
-	last = 0
-	for sendc := range ch{
-		if(sendc.clk.When - last)> 2000000000 {
-			last = sendc.clk.When
-			_,err:=datastore.Put(sendc.c,datastore.NewIncompleteKey(sendc.c,"Click",nil),sendc.clk)
-			if err != nil {
-				sendc.c.Errorf("%v",err)
-			}
-		}
+	_,err:=datastore.Put(c,datastore.NewIncompleteKey(c,"Click",nil),&clk)
+	if err != nil {
+		c.Errorf("%v",err)
 	}
 }

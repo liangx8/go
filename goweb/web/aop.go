@@ -1,7 +1,6 @@
 package web
 
 import (
-	"aop"
 	"reflect"
 	"net/http"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"appengine"
 
 	"session"
+	"aop"
 )
 
 func handleFunc(pattern string,handler interface{}){
@@ -47,9 +47,10 @@ func createRequestInjector(argtype []reflect.Type) func([]reflect.Value) []refle
 					args[i]=in[0]
 				case argtype[i] == in[1].Type():
 					args[i]=in[1]
-				case argtype[i] == reflect.TypeOf((*session.Session)(nil)).Elem():
+				case argtype[i] == reflect.TypeOf((**session.Session)(nil)).Elem():
 					var id int64
 					c := appengine.NewContext(r)
+					//c.Infof(appengine.AppID(c))
 					cookie,err := r.Cookie("SESSIONID")
 					if err != nil {
 							if err != http.ErrNoCookie {
@@ -63,13 +64,14 @@ func createRequestInjector(argtype []reflect.Type) func([]reflect.Value) []refle
 									id =0
 							}
 					}
-					s := session.Get(id)
-					if s == nil {
-							s = session.New(c)
+					s :=&session.Session{Id:id}
+					if session.Get(c,s) {
 							// for every page has own session
 							// w.Header().Add("Set-Cookie",fmt.Sprintf("SESSIONID=%d;path=%s",session.Id(),r.URL.RequestURI()))
 							// all page have one session
-							w.Header().Add("Set-Cookie",fmt.Sprintf("SESSIONID=%d;path=/",s.Id()))
+							w.Header().Add("Set-Cookie",fmt.Sprintf("SESSIONID=%d;path=/",s.Id))
+					} else {
+						s.Update(c)
 					}
 					args[i]=reflect.ValueOf(s)
 

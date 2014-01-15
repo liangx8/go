@@ -1,99 +1,162 @@
+// 只是记录当前的SESSION
+// id, time,
 package session
 
 import (
 	"time"
 	"appengine"
-
-
-
+	"appengine/memcache"
+	"encoding/binary"
+	"fmt"
 )
-var instId int64
-type Session interface{
-	Id() int64
-	Map() map[string]interface{}
+type Session struct{
+	Id, last int64
+	used bool
 }
-var chsession = make(chan map[int64]*session_,1)
+type sessionpool struct {
+	Count int64
+	S map[int64]*Session
+}
+func (sp sessionpool)CountSerialize()[]byte {
+	buf := make([]byte,binary.MaxVarintLen64)
+	n := binary.PutVarint(buf,sp.Count) // panic if buf too small
+	return buf[:n]
+}
+func (sp *sessionpool)CountUnserialize(buf []byte)int {
+	v,n:=binary.Varint(buf)
+	if n <=0 {
+		panic("Count unserialized error")
+	}
+	sp.Count=v
+	return n
+}
+func ListSession(c appengine.Context) *sessionpool{
+	return cache(c)
+}
+func (s Session)Serialize()[]byte{
 
-type session_ struct{
-	id int64
-	due *time.Timer
-	data map[string]interface{}
-}
-func (s session_)Id() int64{
-	return s.id
-}
-func (s session_)Map() map[string]interface{}{
-	return s.data
-}
-func New(c appengine.Context) Session{
-	id :=time.Now().UnixNano()
-	s :=&session_{id,time.AfterFunc(15*time.Minute,func(){
-// c is not available when deploy to GAE
-//		c.Infof("session %d invialidate, instance %d",id,instId)
-		ss := <-chsession
-		delete(ss,id)
-		chsession<- ss
-	}),make(map[string]interface{})}
-	c.Infof("new session(%d) instance %d",id,instId)
-	ss := <-chsession
-	ss[id]=s
-	chsession<- ss
-	return s
-}
-func Get(id int64) Session{
-//	log.Printf("find session %d",id)
-	ss := <-chsession
-	s,exists :=ss[id]
-	if exists{
-		s.due.Reset(15*time.Minute)
+	buf := make([]byte,0,binary.MaxVarintLen64*3)
+	buf1 := make([]byte,binary.MaxVarintLen64)
+	idx:=0;
+	n :=binary.PutVarint(buf1,s.Id) // panic if buf too small
+	idx=n
+	buf = append(buf, buf1[:n]...)
+	n =binary.PutVarint(buf1,s.last)
+	idx=idx+n
+	buf = append(buf, buf1[:n]...)
+
+	if s.used {
+		buf = append(buf,byte(1))
+	} else {
+		buf = append(buf,byte(0))
 	}
-	chsession<- ss
-	if !exists {
-//		log.Println("   **** NOT FOUND ****")
-		// 返回nil值时，必须这样写，详情参考FAQ Why is my nil error value not equal to nil?
-		return nil
-	}
-//	log.Println(" FOUND ")
-	return s
+	return buf
 }
-func init(){
-	//chsession = make(chan map[int64]*session_,1)
-	if len(chsession)==0 {
-		chsession<- make(map[int64]*session_)
+func (s *Session)Unserialize(buf []byte)int{
+	v,n:=binary.Varint(buf)
+	idx := 0
+	if n <=0 {
+		panic("session unserialized error")
 	}
-	instId = time.Now().UnixNano()
-/*
-	log.Printf("***********************************************************")
-	log.Printf("*              initializing session,%d                  *",k)
-	log.Printf("***********************************************************")
-	go func(){
-		idx := 0
-		for {
-			idx ++
-			m := <-chsession
-			log.Printf("%d]%d:%v",k,idx,m)
-			chsession<- m
-			time.Sleep(19*time.Second)
+	idx = n
+	s.Id=v
+	buf = buf[n:]
+	v,n = binary.Varint(buf)
+	if n <=0 {
+		panic("session unserialized error")
+	}
+	idx = idx + n
+	s.last=v
+	if buf[n]==0 {
+		s.used=false
+	} else {
+		s.used=true
+	}
+	return idx+1
+}
+// 获得或者新建
+// return true 新SESSION, false 旧SESSION
+func Get(c appengine.Context,s *Session)bool{
+	sp := cache(c)
+	tmp,ok:=sp.S[s.Id]
+	if ok {
+		s.last,s.used = tmp.last,tmp.used
+		return false
+	} else {
+		id:=time.Now().UnixNano()
+		s.Id,s.last,s.used = id,id,false
+		sp.S[id]=s
+		toCache(c,sp)
+		return true
+	}
+	panic("impossible")
+}
+// 如果id已经过期，删除
+func (s *Session)Update(c appengine.Context) {
+	now:=time.Now().UnixNano()
+	if now-s.last > int64(5*time.Minute) {
+		removeCache(c,s.Id)
+	}else {
+		s.last=now
+		sp:=cache(c)
+		sp.S[s.Id]=s
+		toCache(c,sp)
+	}
+}
+func (s *Session)IsUsed(c appengine.Context) bool{
+	if s.used {return true}
+	s.used=true
+	sp:=cache(c)
+	sp.Count ++
+	c.Infof("Total click %d:",sp.Count)
+	sp.S[s.Id]=s
+	toCache(c,sp)
+	return false
+}
+func (s Session)String() string{
+	return fmt.Sprintf("%d,%d,%v",s.Id,s.last,s.used)
+}
+// 把SESSION池保存到MEMCACHE
+func toCache(c appengine.Context,sp *sessionpool){
+
+// delete obsolate session
+	dels := make([]int64,0,len(sp.S))
+	now :=time.Now().UnixNano()
+	for id,s :=range sp.S{
+		if now-s.last > int64(5*time.Minute){
+			dels = append(dels,id)
 		}
-	}()
-*/
-}
-func List() []int64{
-	m := make([]int64,0,40)
-	m=append(m,instId)
-	ss := <-chsession
-	for k := range ss {
-		m=append(m,k)
 	}
-	chsession <- ss
-	return m
-}
-/*
-func Log(c appengine.Context){
-	ss := <-chsession
-	for k,v := range ss {
-		c.Infof("%v=%v",k,v)
+	for i:= range dels {
+		c.Infof("session %d was removed",dels[i])
+		delete(sp.S,dels[i])
 	}
-	chsession <- ss
+
+
+	cd := memcache.Codec{Marshal:marshal,Unmarshal:unmarshal}
+	item := memcache.Item{
+	//	Key:appengine.AppID(c),
+		Key:"session_pool",
+		Object:sp,
+	}
+	if err:=cd.Set(c,&item); err != nil {
+		panic(err)
+	}
 }
-*/
+func cache(c appengine.Context) *sessionpool{
+	sp := &sessionpool{Count:0,S:make(map[int64]*Session)}
+	cd := memcache.Codec{Marshal:marshal,Unmarshal:unmarshal}
+	//_,err:=cd.Get(c,appengine.AppID(c),&ss)
+	_,err:=cd.Get(c,"session_pool",sp)
+	if err != nil {
+		c.Infof("server say:%v",err)
+		//toCache(c,sp)
+	}
+	return sp
+}
+func removeCache(c appengine.Context,id int64){
+	sp:=cache(c)
+	delete(sp.S,id)
+	toCache(c,sp)
+}
+

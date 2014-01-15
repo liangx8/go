@@ -124,12 +124,13 @@ Total: {{.total}}<a href="click.{{.lastpage}}">last page</a>
 </head>
 <body>
 <a href="./">admin</a>
-{{if .data}}
-<table><tr><td>Name</td><td>Update</td></tr>
+{{.data.Count}}
+{{if .data.S}}
+<table><tr><td>sessionid</td><td>sessionid,Update</td></tr>
 {{end}}
-{{range $k,$v := .data}}
+{{range $k,$v := .data.S}}
 <tr><td>{{$k}}</td><td>{{$v}}</td></tr>{{end}}
-{{if .data}}
+{{if .data.S}}
 </table>
 {{end}}
 

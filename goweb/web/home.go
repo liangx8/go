@@ -11,7 +11,7 @@ import (
 
 )
 
-func root(w http.ResponseWriter,r *http.Request,s session.Session){
+func root(w http.ResponseWriter,r *http.Request,s *session.Session){
 	click.Counter(r,s)
 	byFileName(w,r)
 }
