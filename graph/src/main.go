@@ -23,6 +23,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println(ia)
+	fmt.Println("========================================")
 /*
 	var 计数器 int
 	collection.ForEach(b,func(e interface{}){
@@ -36,6 +38,7 @@ func main() {
 		计数器++
 	})
 */
+
 }
 const (
 	amount = 10

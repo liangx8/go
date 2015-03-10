@@ -3,11 +3,10 @@ package algorithm
 import (
 	"collection"
 	"utils"
+	"io"
 //	"fmt"
 )
-type atom_data struct{
-	start,end int
-}
+
 func SimpleQuickSort(es []interface{}) error{
 	return QuickSort(es,utils.PrimitiveCompare)
 }
@@ -99,8 +98,9 @@ start_:
 	end=st
 	goto start_
 middle_:
-	if ss.IsEmpty() {return nil}
-	sp,_ = ss.Pop().(*stack_pool)
+	//if ss.IsEmpty() {return nil}
+
+	if ss.Pop(&sp) == io.EOF { return nil }
 	start,st,end,en=sp.start,sp.st,sp.end,sp.en
 	if !sp.left {goto middle_right}
 //middle_left:

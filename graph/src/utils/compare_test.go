@@ -4,6 +4,13 @@ import (
     "testing"
 )
 
+func TestCompareBuilder(t *testing.T) {
+	var cb CompareBuilder
+	cp := cb.Build()
+	if _,err:=cp(nil,nil);err != nil {
+		t.Fatal(err)
+	}
+}
 func TestPrimitiveCompare(t *testing.T) {
 	// string
 	src,dst := "1","2"
@@ -28,6 +35,16 @@ func TestPrimitiveCompare(t *testing.T) {
 	res,_ =PrimitiveCompare(src,dst)
 	if res>0 {
 		t.Errorf("input (%s,%s) expect result less than 0, result is %d",src,dst,res)
+	}
+	src,dst = "100","20"
+	res,_ =PrimitiveCompare(src,dst)
+	if res>0 {
+		t.Errorf("input (%s,%s) expect result less than 0, result is %d",src,dst,res)
+	}
+	src,dst = "100","100"
+	res,_ =PrimitiveCompare(src,dst)
+	if res != 0 {
+		t.Errorf("input (%s,%s) expect result equal to 0, result is %d",src,dst,res)
 	}
 }
 

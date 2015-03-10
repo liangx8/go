@@ -7,6 +7,7 @@ const (
 )
 type Compare func(l,r interface{}) (int,error)
 
+
 func PrimitiveCompare(l,r interface{}) (int,error) {
 
 	switch l_value := l.(type){

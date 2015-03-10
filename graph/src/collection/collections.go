@@ -1,41 +1,47 @@
 package collection
 
 import (
-
+	"errors"
 )
 
+var ErrOutOfRange = errors.New("index is out of range!")
+
 type Iterator interface{
-	HasNext() bool
-	Next() interface{}
+	Next(interface{})bool
 }
 type Iteration interface{
 	Iterator() Iterator
 }
+// FILO order
 type Stack interface{
 	Iteration
 	Push(e interface{})
-	Pop() interface{}
+	Pop(interface{})error
 	IsEmpty()bool
 }
-// sequence access
+// Choas order
 type Bag interface{
 	Iteration
-	Add(e interface{}) error
+	Add(e interface{})
 	Remove(e interface{})
 	Find(e interface{})error
 }
-// random access
+// Random access
 type Vector interface{
 	Iteration
 	Add(e interface{})
-	Set(idx int,e interface{})
-	Get(idx int)interface{}
-	Remove(idx int) interface{}
+	Set(idx int,e interface{}) error
+	Get(idx int,e interface{}) error
+	Remove(idx int,e interface{})error
 	Size() int
 }
-func ForEach(c Iteration,cb func(e interface{})){
+func ForEach(c Iteration,cb func(e interface{})error)error{
 	it := c.Iterator()
-	for it.HasNext() {
-		cb(it.Next())
+	var e interface{}
+	for it.Next(&e){
+		if err:=cb(e);err != nil {
+			return err
+		}
 	}
+	return nil
 }
