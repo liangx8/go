@@ -1,8 +1,0 @@
-// Some sorting algorithm
-package sortable
-// compare two object
-// return ErrorNotComparable
-type CompareType func(l,r interface{}) (int,error)
-
-//var ErrorNotComparable=errors.New("Object is not compare")
-
