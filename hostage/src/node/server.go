@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 )
 
 // return false if parse path success
@@ -16,7 +17,7 @@ func parsePath(path string, w io.Writer, onSuccess func() error) error {
 	}
 	return returnWrong(w, fmt.Sprintf("`%s' is not lead by '/'", path))
 }
-func ls(r *bufio.Reader, w io.WriteCloser, root string) error {
+func ls(r io.Reader, w io.WriteCloser, root string) error {
 	path, err := readString(r)
 	if err != nil {
 		return err
@@ -41,13 +42,31 @@ func ls(r *bufio.Reader, w io.WriteCloser, root string) error {
 		return nil
 	})
 }
-func upload(r *bufio.Reader, w io.WriteCloser, root string) error {
+func upload(r io.Reader, w io.WriteCloser, root string) error {
 	return nil
 }
-func download(r *bufio.Reader, w io.WriteCloser, root string) error {
-	return nil
+func download(r io.Reader, w io.WriteCloser, root string) error {
+	path, err := readString(r)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	log.Printf("download %s\n", root+path)
+	return parsePath(path, w, func() error {
+		f, err := os.Open(root + path)
+		if err != nil {
+			returnWrong(w, err.Error())
+			return err
+		}
+		_, err = io.Copy(w, f)
+		if err != nil {
+			return err
+		} else {
+			return nil
+		}
+	})
 }
-func remove(r *bufio.Reader, w io.WriteCloser, root string) error {
+func remove(r io.Reader, w io.WriteCloser, root string) error {
 	return nil
 }
 func writeStringTo(w io.Writer, msg string) error {
@@ -83,7 +102,7 @@ func readString(r io.Reader) (string, error) {
 	return string(buf), nil
 }
 
-// 中文
+// 处理进来的消息
 func Host(rw io.ReadWriteCloser, root string) bool {
 	br := bufio.NewReader(rw)
 	defer rw.Close()
@@ -92,7 +111,7 @@ func Host(rw io.ReadWriteCloser, root string) bool {
 		log.Print(err)
 		return false
 	}
-	var response func(*bufio.Reader, io.WriteCloser, string) error
+	var response func(io.Reader, io.WriteCloser, string) error
 	switch int(cmd) {
 	case R_LS:
 		response = ls
